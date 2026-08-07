@@ -1,7 +1,7 @@
 #!/usr/bin/env -S nix eval --raw -f
 
 with builtins; let
-  inherit (import ./lib.nix) prepend join range toInt;
+  inherit (import ./lib.nix) prepend join range toInt toFloat;
 
   vec3 = import ./vec3.nix;
   ray = import ./ray.nix;
@@ -20,7 +20,7 @@ with builtins; let
 
     viewport = {
       height = 2.0;
-      width = image.viewport.height * (image.width / image.height);
+      width = image.viewport.height * ((toFloat image.width) / image.height);
 
       u = vec3 image.viewport.width 0.0 0.0;
       v = vec3 0.0 (-image.viewport.height) 0.0;
@@ -49,13 +49,24 @@ with builtins; let
     };
   };
 
+  hitSphere = center: radius: ray: let
+    oc = vec3.sub center ray.origin;
+    a = vec3.dot ray.direction ray.direction;
+    b = -2.0 * (vec3.dot ray.direction oc);
+    c = (vec3.dot oc oc) - radius * radius;
+    discriminant = b * b - 4.0 * a * c;
+  in discriminant >= 0;
+
   rayColor = ray: let
     unitDirection = (vec3.unit ray.direction);
     a = 0.5 * (unitDirection.y + 1.0);
   in
-    vec3.add
-    (vec3.scale (1.0 - a) (vec3 1.0 1.0 1.0))
-    (vec3.scale a (vec3 0.5 0.7 1.0))
+    if hitSphere (vec3 0.0 0.0 (-1.0)) 0.5 ray
+    then (vec3 1.0 0.0 0.0)
+    else
+      vec3.add
+      (vec3.scale (1.0 - a) (vec3 1.0 1.0 1.0))
+      (vec3.scale a (vec3 0.5 0.7 1.0))
     ;
 
   colorizeVector = color:
