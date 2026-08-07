@@ -1,3 +1,4 @@
+#!/usr/bin/env -S nix eval --raw -f
 with builtins; let
   image = {
     width = 256;
