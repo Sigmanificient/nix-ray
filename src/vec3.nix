@@ -32,7 +32,7 @@ let
 
     length = v: sqrt (methods.lengthSquared v);
 
-    unitVector = v: methods.div v (methods.length v);
+    unit = v: methods.div v (methods.length v);
 
     map = v: f: vector (f v.x) (f v.y) (f v.z);
   };
@@ -52,7 +52,7 @@ in
     cross
     lengthSquared
     length
-    unitVector
+    unit
     map
   ;
 }

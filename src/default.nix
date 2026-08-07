@@ -1,24 +1,80 @@
 #!/usr/bin/env -S nix eval --raw -f
 
 with builtins; let
-  inherit (import ./lib.nix) prepend join range toInt toFloat;
+  inherit (import ./lib.nix) prepend join range toInt;
+
   vec3 = import ./vec3.nix;
+  ray = import ./ray.nix;
+
+  camera = {
+    focalLength = 1.0;
+    center = vec3 0.0 0.0 0.0;
+  };
 
   image = {
-    width = 256;
-    height = 256;
+    aspectRatio = 16.0 / 9.0;
 
+    width = 400;
+    height = toInt (image.width / image.aspectRatio);
     maxColorValue = 255;
+
+    viewport = {
+      height = 2.0;
+      width = image.viewport.height * (image.width / image.height);
+
+      u = vec3 image.viewport.width 0.0 0.0;
+      v = vec3 0.0 (-image.viewport.height) 0.0;
+
+      upper_left =
+        vec3.sub
+          (vec3.sub (vec3.sub camera.center (vec3 0 0 camera.focalLength))
+          (vec3.scale 0.5 image.viewport.u))
+          (vec3.scale 0.5 image.viewport.v)
+        ;
+    };
+
+    pixel = {
+      delta = {
+        u = vec3.div image.viewport.u image.width;
+        v = vec3.div image.viewport.v image.height;
+      };
+
+      zero_loc = vec3.add
+        image.viewport.upper_left
+        (vec3.scale 0.5 (
+          vec3.add
+            image.pixel.delta.u
+            image.pixel.delta.v
+        ));
+    };
   };
+
+  rayColor = ray: let
+    unitDirection = (vec3.unit ray.direction);
+    a = 0.5 * (unitDirection.y + 1.0);
+  in
+    vec3.add
+    (vec3.scale (1.0 - a) (vec3 1.0 1.0 1.0))
+    (vec3.scale a (vec3 0.5 0.7 1.0))
+    ;
 
   colorizeVector = color:
     toString (vec3.map color (c: toInt (c * (image.maxColorValue + 0.999))));
 
   makePixel = i: j: let
-    r = (toFloat i) / (image.width - 1);
-    g = (toFloat j) / (image.height - 1);
-    b = 0.0;
-  in colorizeVector (vec3 r g b);
+    pixelCenter =
+      vec3.add
+        image.pixel.zero_loc
+        (vec3.add
+          (vec3.scale i image.pixel.delta.u)
+          (vec3.scale j image.pixel.delta.v));
+
+    rayDirection = vec3.sub pixelCenter camera.center;
+
+    r = (ray camera.center rayDirection);
+    color = (rayColor r);
+
+  in colorizeVector (color);
 
   pixels = concatMap
     (j: builtins.trace "remaining: ${toString (image.height - j)}"
