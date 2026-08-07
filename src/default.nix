@@ -2,6 +2,7 @@
 
 with builtins; let
   inherit (import ./lib.nix) prepend join range toInt toFloat;
+  inherit (import ./math.nix) sqrt;
 
   vec3 = import ./vec3.nix;
   ray = import ./ray.nix;
@@ -55,15 +56,20 @@ with builtins; let
     b = -2.0 * (vec3.dot ray.direction oc);
     c = (vec3.dot oc oc) - radius * radius;
     discriminant = b * b - 4.0 * a * c;
-  in discriminant >= 0;
+  in if discriminant < 0 then -1.0 else (-b - (sqrt discriminant)) / (2.0 * a);
 
-  rayColor = ray: let
-    unitDirection = (vec3.unit ray.direction);
+  rayColor = r: let
+    unitDirection = (vec3.unit r.direction);
     a = 0.5 * (unitDirection.y + 1.0);
+
+    t = hitSphere (vec3 0.0 0.0 (-1.0)) 0.5 r;
   in
-    if hitSphere (vec3 0.0 0.0 (-1.0)) 0.5 ray
-    then (vec3 1.0 0.0 0.0)
-    else
+    if t > 0
+    then (
+      let
+        n = (vec3.unit (vec3.sub (ray.at r t) (vec3 0.0 0.0 (-1.0))));
+      in vec3.scale 0.5 (vec3 (n.x+1) (n.y+1) (n.z+1))
+    ) else
       vec3.add
       (vec3.scale (1.0 - a) (vec3 1.0 1.0 1.0))
       (vec3.scale a (vec3 0.5 0.7 1.0))
