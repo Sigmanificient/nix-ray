@@ -11,12 +11,5 @@ with builtins; let
 
   toInt = floor;
 in {
-  inherit
-    id
-    join
-    prepend
-    range
-    toInt
-    toFloat
-  ;
+  inherit id join prepend range toInt toFloat;
 }
